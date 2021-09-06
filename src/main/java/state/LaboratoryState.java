@@ -72,6 +72,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         assertAllRequiredFieldsAreInjected();
         if (n >= 1) {
             this.n = n;
+            clearAllVariablesOnNSet();
             MatrixVariable variableA = (MatrixVariable) variableHolder.getVariable("A");
             variableA.setColumnCount(n);
             variableA.setRowCount(n);
@@ -80,7 +81,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
             MatrixVariable variableC = (MatrixVariable) variableHolder.getVariable("C");
             variableC.setColumnCount(n);
         } else {
-            ConsoleUtils.println("n must be >= 1");
+            ConsoleUtils.println(variableHolder.getVariable("n").getConstraintViolationMessage());
         }
     }
 
@@ -91,7 +92,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
             MatrixVariable variableB = (MatrixVariable) variableHolder.getVariable("B");
             variableB.setColumnCount(m);
         } else {
-            ConsoleUtils.println("m must be >= 1 and <= n");
+            ConsoleUtils.println(variableHolder.getVariable("m").getConstraintViolationMessage());
         }
     }
 
@@ -102,7 +103,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
             MatrixVariable variableC = (MatrixVariable) variableHolder.getVariable("C");
             variableC.setRowCount(l);
         } else {
-            ConsoleUtils.println("l must be >= 1 and <= n");
+            ConsoleUtils.println(variableHolder.getVariable("l").getConstraintViolationMessage());
         }
     }
 
@@ -141,7 +142,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
 
     public void setT(double T) {
         if (T < 0.001 || T > 0.1) {
-            ConsoleUtils.println("T must be >= 0.001 and <= 0.1");
+            ConsoleUtils.println(variableHolder.getVariable("T").getConstraintViolationMessage());
         } else {
             this.T = T;
         }
@@ -149,10 +150,18 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
 
     public void setQ(int q) {
         if (q < 2 || q > 10) {
-            ConsoleUtils.println("q must be >= 2 and <= 10");
+            ConsoleUtils.println(variableHolder.getVariable("q").getConstraintViolationMessage());
         } else {
             this.q = q;
         }
+    }
+
+    private void clearAllVariablesOnNSet() {
+        this.m = 0;
+        this.l = 0;
+        this.A = null;
+        this.B = null;
+        this.C = null;
     }
 
     @Override
