@@ -5,10 +5,12 @@ import framework.state.StateHelper;
 import framework.utils.ConsoleUtils;
 import framework.utils.ValidationUtils;
 import framework.variable.entity.MatrixVariable;
+import framework.variable.entity.VectorVariable;
 import framework.variable.holder.VariableHolder;
 import framework.variable.holder.VariableHolderAware;
 import lombok.Getter;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
 
 @Getter
 public class LaboratoryState extends AbstractApplicationState implements VariableHolderAware {
@@ -28,11 +30,17 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
 
     private Array2DRowRealMatrix C;
 
+    private ArrayRealVector u;
+
     //T must be >= 0.001 and <= 0.1
     private double T;
 
     //q must be >= 2 and <= 10
     private int q;
+
+    private Array2DRowRealMatrix F;
+
+    private Array2DRowRealMatrix G;
 
     private VariableHolder variableHolder;
 
@@ -50,6 +58,8 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
                 .defaultSet(name, "B", value, Array2DRowRealMatrix.class, (val) -> (Array2DRowRealMatrix) val, this::setB));
         this.variableNameToSetter.put("C", (name, value) -> StateHelper
                 .defaultSet(name, "C", value, Array2DRowRealMatrix.class, (val) -> (Array2DRowRealMatrix) val, this::setC));
+        this.variableNameToSetter.put("u", (name, value) -> StateHelper
+                .defaultSet(name, "u", value, ArrayRealVector.class, (val) -> (ArrayRealVector) val, this::setU));
         this.variableNameToSetter.put("T", (name, value) -> StateHelper
                 .defaultSet(name, "T", value, Double.class, (val) -> (Double) val, this::setT));
         this.variableNameToSetter.put("q", (name, value) -> StateHelper
@@ -64,8 +74,11 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.variableNameToGetter.put("A", this::getA);
         this.variableNameToGetter.put("B", this::getB);
         this.variableNameToGetter.put("C", this::getC);
+        this.variableNameToGetter.put("u", this::getU);
         this.variableNameToGetter.put("T", this::getT);
         this.variableNameToGetter.put("q", this::getQ);
+        this.variableNameToGetter.put("F", this::getF);
+        this.variableNameToGetter.put("G", this::getG);
     }
 
     public void setN(int n) {
@@ -91,6 +104,8 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
             this.m = m;
             MatrixVariable variableB = (MatrixVariable) variableHolder.getVariable("B");
             variableB.setColumnCount(m);
+            VectorVariable variableU = (VectorVariable) variableHolder.getVariable("u");
+            variableU.setLength(m);
         } else {
             ConsoleUtils.println(variableHolder.getVariable("m").getConstraintViolationMessage());
         }
@@ -140,6 +155,17 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         }
     }
 
+    public void setU(ArrayRealVector u) {
+        ValidationUtils.requireNonNull(u);
+        if (m < 1) {
+            ConsoleUtils.println("Specify dimension for vector u");
+        } else if (u.getDimension() != m) {
+            ConsoleUtils.println(String.format("Length of vector u is supposed to be %d", m));
+        } else {
+            this.u = u;
+        }
+    }
+
     public void setT(double T) {
         if (T < 0.001 || T > 0.1) {
             ConsoleUtils.println(variableHolder.getVariable("T").getConstraintViolationMessage());
@@ -156,12 +182,54 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         }
     }
 
+    public void setF(Array2DRowRealMatrix F) {
+        ValidationUtils.requireNonNull(F);
+        if (n < 1) {
+            ConsoleUtils.println("Specify 'n'");
+        } else if (F.getRowDimension() != n || F.getColumnDimension() != n) {
+            ConsoleUtils.println(String.format("Matrix F is supposed to be with %d rows and %d columns", n, n));
+        } else if (A == null || T < 0.001 || q < 2) {
+            ConsoleUtils.println("Matrix F could not be computed");
+        } else {
+            this.F = F;
+        }
+    }
+
+    public void setG(Array2DRowRealMatrix G) {
+        ValidationUtils.requireNonNull(G);
+        if (n < 1) {
+            ConsoleUtils.println("Specify 'n'");
+        } else if (m < 1) {
+            ConsoleUtils.println("Specify 'm'");
+        } else if (G.getRowDimension() != n || G.getColumnDimension() != m) {
+            ConsoleUtils.println(String.format("Matrix G is supposed to be with %d rows and %d columns", n, m));
+        } else if (A == null || B == null || T < 0.001 || q < 2) {
+            ConsoleUtils.println("Matrix G could not be computed");
+        } else {
+            this.G = G;
+        }
+    }
+
     private void clearAllVariablesOnNSet() {
         this.m = 0;
         this.l = 0;
         this.A = null;
         this.B = null;
         this.C = null;
+        this.u = null;
+        this.F = null;
+        this.G = null;
+        MatrixVariable variableA = (MatrixVariable) variableHolder.getVariable("A");
+        variableA.setColumnCount(0);
+        variableA.setRowCount(0);
+        MatrixVariable variableB = (MatrixVariable) variableHolder.getVariable("B");
+        variableB.setRowCount(0);
+        variableB.setColumnCount(0);
+        MatrixVariable variableC = (MatrixVariable) variableHolder.getVariable("C");
+        variableC.setColumnCount(0);
+        variableC.setRowCount(0);
+        VectorVariable variableU = (VectorVariable) variableHolder.getVariable("u");
+        variableU.setLength(0);
     }
 
     @Override
@@ -169,7 +237,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.variableHolder = variableHolder;
     }
 
-    private void assertAllRequiredFieldsAreInjected(){
+    private void assertAllRequiredFieldsAreInjected() {
         ValidationUtils.requireNonNull(variableHolder);
     }
 
