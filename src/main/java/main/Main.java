@@ -1,6 +1,6 @@
 package main;
 
-import command.ComputeMatricesFandGCommand;
+import command.RunCommand;
 import framework.application.Application;
 import framework.state.ApplicationState;
 import state.LaboratoryState;
@@ -12,7 +12,7 @@ public class Main {
     public static void main(String[] args) {
         ApplicationState state = new LaboratoryState();
         Application application = new Application.ApplicationBuilder(PATH_TO_PROPERTIES, state)
-                .addCommand("compute-matrices-F-and-G", new ComputeMatricesFandGCommand())
+                .addCommand("run", new RunCommand())
                 .build();
         application.start();
     }

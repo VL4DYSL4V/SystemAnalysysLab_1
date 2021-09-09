@@ -38,9 +38,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
     //q must be >= 2 and <= 10
     private int q;
 
-    private Array2DRowRealMatrix F;
-
-    private Array2DRowRealMatrix G;
+    private int iterationCount = -1;
 
     private VariableHolder variableHolder;
 
@@ -64,6 +62,9 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
                 .defaultSet(name, "T", value, Double.class, (val) -> (Double) val, this::setT));
         this.variableNameToSetter.put("q", (name, value) -> StateHelper
                 .defaultSet(name, "q", value, Integer.class, (val) -> (Integer) val, this::setQ));
+        this.variableNameToSetter.put("iteration-count", (name, value) -> StateHelper
+                .defaultSet(name, "iteration-count", value, Integer.class,
+                        (val) -> (Integer) val, this::setIterationCount));
     }
 
     @Override
@@ -77,8 +78,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.variableNameToGetter.put("u", this::getU);
         this.variableNameToGetter.put("T", this::getT);
         this.variableNameToGetter.put("q", this::getQ);
-        this.variableNameToGetter.put("F", this::getF);
-        this.variableNameToGetter.put("G", this::getG);
+        this.variableNameToGetter.put("iteration-count", this::getIterationCount);
     }
 
     public void setN(int n) {
@@ -182,31 +182,11 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         }
     }
 
-    public void setF(Array2DRowRealMatrix F) {
-        ValidationUtils.requireNonNull(F);
-        if (n < 1) {
-            ConsoleUtils.println("Specify 'n'");
-        } else if (F.getRowDimension() != n || F.getColumnDimension() != n) {
-            ConsoleUtils.println(String.format("Matrix F is supposed to be with %d rows and %d columns", n, n));
-        } else if (A == null || T < 0.001 || q < 2) {
-            ConsoleUtils.println("Matrix F could not be computed");
+    public void setIterationCount(int iterationCount) {
+        if (iterationCount < 0) {
+            ConsoleUtils.println(variableHolder.getVariable("iteration-count").getConstraintViolationMessage());
         } else {
-            this.F = F;
-        }
-    }
-
-    public void setG(Array2DRowRealMatrix G) {
-        ValidationUtils.requireNonNull(G);
-        if (n < 1) {
-            ConsoleUtils.println("Specify 'n'");
-        } else if (m < 1) {
-            ConsoleUtils.println("Specify 'm'");
-        } else if (G.getRowDimension() != n || G.getColumnDimension() != m) {
-            ConsoleUtils.println(String.format("Matrix G is supposed to be with %d rows and %d columns", n, m));
-        } else if (A == null || B == null || T < 0.001 || q < 2) {
-            ConsoleUtils.println("Matrix G could not be computed");
-        } else {
-            this.G = G;
+            this.iterationCount = iterationCount;
         }
     }
 
@@ -217,8 +197,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.B = null;
         this.C = null;
         this.u = null;
-        this.F = null;
-        this.G = null;
+        this.iterationCount = -1;
         MatrixVariable variableA = (MatrixVariable) variableHolder.getVariable("A");
         variableA.setColumnCount(0);
         variableA.setRowCount(0);
