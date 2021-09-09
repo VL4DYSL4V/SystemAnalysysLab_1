@@ -6,13 +6,12 @@ import framework.command.RunnableCommand;
 import framework.state.ApplicationState;
 import framework.state.ApplicationStateAware;
 import framework.utils.ConsoleUtils;
+import framework.utils.MatrixUtils;
 import framework.utils.ValidationUtils;
-import org.apache.commons.math3.linear.AbstractRealMatrix;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.CombinatoricsUtils;
-import util.MatrixUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -107,7 +106,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         Optional<Integer> optionalQ = getVariableFromStateOrAskForIt("q", q -> q >= 2 && q <= 10);
         if (optionalA.isPresent() && optionalB.isPresent()
                 && optionalT.isPresent() && optionalQ.isPresent()) {
-            Map<Integer, AbstractRealMatrix> powerToMatrixInThatPower =
+            Map<Integer, RealMatrix> powerToMatrixInThatPower =
                     MatrixUtils.getPowerToMatrixInThatPower(optionalA.get(), optionalQ.get());
             Array2DRowRealMatrix F = computeMatrixF(optionalA.get(), optionalT.get(),
                     optionalQ.get(), powerToMatrixInThatPower);
@@ -119,7 +118,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     }
 
     private Array2DRowRealMatrix computeMatrixF(Array2DRowRealMatrix A, double T, int q,
-                                                Map<Integer, AbstractRealMatrix> powerToMatrixInThatPower) {
+                                                Map<Integer, RealMatrix> powerToMatrixInThatPower) {
         RealMatrix F = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
         for (int i = 0; i <= q; i++) {
             RealMatrix matrixToAdd = powerToMatrixInThatPower.get(i)
@@ -130,7 +129,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     }
 
     private Array2DRowRealMatrix computeMatrixG(Array2DRowRealMatrix A, Array2DRowRealMatrix B, double T, int q,
-                                                Map<Integer, AbstractRealMatrix> powerToMatrixInThatPower) {
+                                                Map<Integer, RealMatrix> powerToMatrixInThatPower) {
         RealMatrix G = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
         for (int i = 1; i <= q - 1; i++) {
             RealMatrix matrixToAdd = powerToMatrixInThatPower.get(i)
