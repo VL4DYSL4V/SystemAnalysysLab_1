@@ -1,6 +1,8 @@
 package command;
 
 import command.dto.MatricesDto;
+import dao.FileSystemVectorXDao;
+import dao.VectorXDao;
 import framework.command.RunnableCommand;
 import framework.state.ApplicationState;
 import framework.state.ApplicationStateAware;
@@ -41,39 +43,55 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
 
     private List<RealVector> getSequenceOfY(MatricesDto dto, String variant) {
         RealVector one = new ArrayRealVector(new double[]{1});
+        RealVector minusOne = new ArrayRealVector(new double[]{-1});
+        int period = getIterationCount(1);
+        int iterationCount = getIterationCount(3);
+        Function<Integer, RealVector> alternateMapper = (i) -> {
+            if ((i / period) % 2 == 0) {
+                return one;
+            }
+            return minusOne;
+        };
         switch (variant) {
             case "1":
-                return computeSequenceOfY(dto, (i) -> one);
+                return computeYsAndWriteXs(dto, (i) -> one, iterationCount,
+                        new FileSystemVectorXDao("Variant_1.txt"));
             case "2":
-                break;
+                return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
+                        new FileSystemVectorXDao("Variant_2.txt"));
             case "3":
-                break;
+                return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
+                        new FileSystemVectorXDao("Variant_3.txt"));
         }
         ConsoleUtils.println(String.format("Unknown variant: %s", variant));
         return new ArrayList<>();
     }
 
-    private List<RealVector> computeSequenceOfY(MatricesDto dto, Function<Integer, RealVector> iterationStepToUTransformer) {
-        int iterationCount = getIterationCount();
+    private List<RealVector> computeYsAndWriteXs(MatricesDto dto, Function<Integer, RealVector> iterationStepToUTransformer,
+                                                 int iterationCount, VectorXDao dao) {
         List<RealVector> out = new ArrayList<>(iterationCount);
         RealMatrix C = (RealMatrix) state.getVariable("C");
         RealVector previousX = new ArrayRealVector(dto.getG().getRowDimension());
         for (int i = 0; i < iterationCount; i++) {
             RealVector y = C.operate(previousX);
             out.add(y);
+            if (i % 100 == 0) {
+                dao.write(i, previousX);
+            }
             RealVector u = iterationStepToUTransformer.apply(i);
             previousX = computeVectorX(dto.getG(), dto.getF(), u, previousX);
-            if (i % 100 == 0 && i < 5_000) {
-                ConsoleUtils.println(previousX.toString());
-            }
         }
         return out;
     }
 
-    private int getIterationCount() {
+    private int getIterationCount(int coefficient) {
         double k = (double) ((int) state.getVariable("k"));
         double T = (double) state.getVariable("T");
-        return (int) (k / T) + 1;
+        int out = coefficient * ((int) (k / T) + 1);
+        if (out < 0) {
+            throw new IllegalStateException("Iteration count is negative");
+        }
+        return out;
     }
 
     private RealVector computeVectorX(RealMatrix G, RealMatrix F, RealVector u, RealVector previousX) {
