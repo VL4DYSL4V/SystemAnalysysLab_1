@@ -1,7 +1,6 @@
 package command;
 
 import command.dto.MatricesDto;
-import command.dto.RequiredParametersDto;
 import framework.command.RunnableCommand;
 import framework.state.ApplicationState;
 import framework.state.ApplicationStateAware;
@@ -11,9 +10,11 @@ import framework.utils.ValidationUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class RunCommand implements RunnableCommand, ApplicationStateAware {
@@ -23,19 +24,81 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     @Override
     public void execute(String[] strings) {
         ValidationUtils.requireNonNull(state);
-        Optional<RequiredParametersDto> parametersDtoOptional = checkParametersArePlaced();
-        if (parametersDtoOptional.isEmpty()) {
+        Optional<MatricesDto> matricesDtoOptional = computeMatrices();
+        if (matricesDtoOptional.isEmpty()) {
+            ConsoleUtils.println("Could not compute matrices");
             return;
         }
-        RequiredParametersDto dto = parametersDtoOptional.get();
-        List<ArrayRealVector> sequenceOfX = getSequenceOfX(dto.getMatricesDto(), dto.getU(), dto.getIterationCount());
-        System.out.println(getSequenceOfY(sequenceOfX, dto.getC()));
+        List<RealVector> sequenceY = getSequenceOfY(matricesDtoOptional.get(), strings[0]);
+
     }
 
     @Override
     public void setApplicationState(ApplicationState applicationState) {
         ValidationUtils.requireNonNull(applicationState);
         this.state = applicationState;
+    }
+
+    private List<RealVector> getSequenceOfY(MatricesDto dto, String variant) {
+        RealVector one = new ArrayRealVector(new double[]{1});
+        switch (variant) {
+            case "1":
+                return computeSequenceOfY(dto, (i) -> one);
+            case "2":
+                break;
+            case "3":
+                break;
+        }
+        ConsoleUtils.println(String.format("Unknown variant: %s", variant));
+        return new ArrayList<>();
+    }
+
+    private List<RealVector> computeSequenceOfY(MatricesDto dto, Function<Integer, RealVector> iterationStepToUTransformer) {
+        int iterationCount = getIterationCount();
+        List<RealVector> out = new ArrayList<>(iterationCount);
+        RealMatrix C = (RealMatrix) state.getVariable("C");
+        RealVector previousX = new ArrayRealVector(dto.getG().getRowDimension());
+        for (int i = 0; i < iterationCount; i++) {
+            RealVector y = C.operate(previousX);
+            out.add(y);
+            RealVector u = iterationStepToUTransformer.apply(i);
+            previousX = computeVectorX(dto.getG(), dto.getF(), u, previousX);
+            if (i % 100 == 0 && i < 5_000) {
+                ConsoleUtils.println(previousX.toString());
+            }
+        }
+        return out;
+    }
+
+    private int getIterationCount() {
+        double k = (double) ((int) state.getVariable("k"));
+        double T = (double) state.getVariable("T");
+        return (int) (k / T) + 1;
+    }
+
+    private RealVector computeVectorX(RealMatrix G, RealMatrix F, RealVector u, RealVector previousX) {
+        return F.operate(previousX).add(G.operate(u));
+    }
+
+    private Optional<MatricesDto> computeMatrices() {
+        Optional<Double> optionalT = getVariableFromStateOrAskForIt("T", T -> T >= 0.001 && T <= 0.1);
+        Optional<Double> optionalA1 = getVariableFromStateOrAskForIt("a1", a1 -> a1 >= 1 && a1 <= 10);
+        Optional<Double> optionalA2 = getVariableFromStateOrAskForIt("a2", a2 -> a2 >= 1 && a2 <= 10);
+        Optional<Integer> optionalQ = getVariableFromStateOrAskForIt("q", q -> q >= 2 && q <= 10);
+        if (optionalA1.isPresent() && optionalA2.isPresent()
+                && optionalT.isPresent() && optionalQ.isPresent()) {
+            double[] coefficients = {1, optionalA1.get(), optionalA2.get()};
+            RealMatrix A = MatrixUtils.getFrobeniusMatrix(coefficients);
+            Map<Integer, RealMatrix> powerToMatrixInThatPower =
+                    MatrixUtils.getPowerToMatrixInThatPower(A, optionalQ.get());
+            double T = optionalT.get();
+            int q = optionalQ.get();
+            RealMatrix F = computeMatrixF(A, T, q, powerToMatrixInThatPower);
+            RealMatrix B = (RealMatrix) state.getVariable("B");
+            RealMatrix G = computeMatrixG(A, B, T, q, powerToMatrixInThatPower);
+            return Optional.of(new MatricesDto(F, G));
+        }
+        return Optional.empty();
     }
 
     @SuppressWarnings("unchecked")
@@ -48,88 +111,19 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         return Optional.of((T) variable);
     }
 
-    private Optional<RequiredParametersDto> checkParametersArePlaced() {
-        Optional<Integer> iterationCountOptional = getVariableFromStateOrAskForIt("iteration-count", i -> i >= 0);
-        if (iterationCountOptional.isEmpty()) {
-            ConsoleUtils.println("Could not start computation - iteration count is not set");
-            return Optional.empty();
-        }
-        Optional<Array2DRowRealMatrix> matrixCOptional = getVariableFromStateOrAskForIt("C", Objects::nonNull);
-        if (matrixCOptional.isEmpty()) {
-            ConsoleUtils.println("Could not start computation - matrix C is not set");
-            return Optional.empty();
-        }
-        Optional<ArrayRealVector> inputProcessOptional = getVariableFromStateOrAskForIt("u", Objects::nonNull);
-        if (inputProcessOptional.isEmpty()) {
-            ConsoleUtils.println("Could not start computation - input process is not set");
-            return Optional.empty();
-        }
-        Optional<MatricesDto> matricesDtoOptional = computeMatrices();
-        if (matricesDtoOptional.isEmpty()) {
-            ConsoleUtils.println("Could not compute matrices. You probably did not specify all required parameters");
-            return Optional.empty();
-        }
-        return Optional.of(new RequiredParametersDto(
-                matricesDtoOptional.get(), matrixCOptional.get(),
-                inputProcessOptional.get(), iterationCountOptional.get())
-        );
-    }
-
-    private List<ArrayRealVector> getSequenceOfY(List<ArrayRealVector> sequenceOfX, Array2DRowRealMatrix C) {
-        List<ArrayRealVector> out = new ArrayList<>(sequenceOfX.size());
-        for (ArrayRealVector x : sequenceOfX) {
-            ArrayRealVector y = (ArrayRealVector) C.operate(x);
-            out.add(y);
-        }
-        return out;
-    }
-
-    private List<ArrayRealVector> getSequenceOfX(MatricesDto dto, ArrayRealVector u, int iterationCount) {
-        Array2DRowRealMatrix F = dto.getF();
-        Array2DRowRealMatrix G = dto.getG();
-        List<ArrayRealVector> out = new ArrayList<>(iterationCount);
-        ArrayRealVector x0 = new ArrayRealVector(G.getRowDimension());
-        out.add(x0);
-        for (int i = 0; i < iterationCount; i++) {
-            ArrayRealVector term = (ArrayRealVector) G.operate(u);
-            ArrayRealVector next = (ArrayRealVector) F.operate(out.get(out.size() - 1))
-                    .add(term);
-            out.add(next);
-        }
-        return out;
-    }
-
-    private Optional<MatricesDto> computeMatrices() {
-        Optional<Array2DRowRealMatrix> optionalA = getVariableFromStateOrAskForIt("A", Objects::nonNull);
-        Optional<Array2DRowRealMatrix> optionalB = getVariableFromStateOrAskForIt("B", Objects::nonNull);
-        Optional<Double> optionalT = getVariableFromStateOrAskForIt("T", T -> T >= 0.001 && T <= 0.1);
-        Optional<Integer> optionalQ = getVariableFromStateOrAskForIt("q", q -> q >= 2 && q <= 10);
-        if (optionalA.isPresent() && optionalB.isPresent()
-                && optionalT.isPresent() && optionalQ.isPresent()) {
-            Map<Integer, RealMatrix> powerToMatrixInThatPower =
-                    MatrixUtils.getPowerToMatrixInThatPower(optionalA.get(), optionalQ.get());
-            Array2DRowRealMatrix F = computeMatrixF(optionalA.get(), optionalT.get(),
-                    optionalQ.get(), powerToMatrixInThatPower);
-            Array2DRowRealMatrix G = computeMatrixG(optionalA.get(), optionalB.get(),
-                    optionalT.get(), optionalQ.get(), powerToMatrixInThatPower);
-            return Optional.of(new MatricesDto(F, G));
-        }
-        return Optional.empty();
-    }
-
-    private Array2DRowRealMatrix computeMatrixF(Array2DRowRealMatrix A, double T, int q,
-                                                Map<Integer, RealMatrix> powerToMatrixInThatPower) {
+    private RealMatrix computeMatrixF(RealMatrix A, double T, int q,
+                                      Map<Integer, RealMatrix> powerToMatrixInThatPower) {
         RealMatrix F = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
         for (int i = 0; i <= q; i++) {
             RealMatrix matrixToAdd = powerToMatrixInThatPower.get(i)
                     .scalarMultiply(Math.pow(T, i)).scalarMultiply(1.0 / CombinatoricsUtils.factorial(i));
             F = F.add(matrixToAdd);
         }
-        return (Array2DRowRealMatrix) F;
+        return F;
     }
 
-    private Array2DRowRealMatrix computeMatrixG(Array2DRowRealMatrix A, Array2DRowRealMatrix B, double T, int q,
-                                                Map<Integer, RealMatrix> powerToMatrixInThatPower) {
+    private RealMatrix computeMatrixG(RealMatrix A, RealMatrix B, double T, int q,
+                                      Map<Integer, RealMatrix> powerToMatrixInThatPower) {
         RealMatrix G = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
         for (int i = 1; i <= q - 1; i++) {
             RealMatrix matrixToAdd = powerToMatrixInThatPower.get(i)
@@ -138,7 +132,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         }
         G = G.scalarMultiply(T);
         G = G.multiply(B);
-        return (Array2DRowRealMatrix) G;
+        return G;
     }
 
 }

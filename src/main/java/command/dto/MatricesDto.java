@@ -1,13 +1,13 @@
 package command.dto;
 
 import lombok.Data;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 
 @Data
 public class MatricesDto {
 
-    private final Array2DRowRealMatrix F;
+    private final RealMatrix F;
 
-    private final Array2DRowRealMatrix G;
+    private final RealMatrix G;
 
 }
