@@ -96,8 +96,4 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.variableHolder = variableHolder;
     }
 
-    private void assertAllRequiredFieldsAreInjected() {
-        ValidationUtils.requireNonNull(variableHolder);
-    }
-
 }
