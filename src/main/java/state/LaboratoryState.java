@@ -23,7 +23,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
 
     private double a2;
 
-    private int k = 30;
+    private final int k = 60;
 
     private VariableHolder variableHolder;
 

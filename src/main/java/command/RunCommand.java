@@ -1,8 +1,9 @@
 package command;
 
-import command.dto.MatricesDto;
+import chart.ChartHelper;
 import dao.FileSystemVectorXDao;
 import dao.VectorXDao;
+import dto.MatricesDto;
 import framework.command.RunnableCommand;
 import framework.state.ApplicationState;
 import framework.state.ApplicationStateAware;
@@ -15,11 +16,20 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class RunCommand implements RunnableCommand, ApplicationStateAware {
+
+    private static final String VARIANT_ONE_TXT = "Variant_1.txt";
+
+    private static final String VARIANT_TWO_TXT = "Variant_2.txt";
+
+    private static final String VARIANT_THREE_TXT = "Variant_3.txt";
 
     private ApplicationState state;
 
@@ -32,7 +42,8 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
             return;
         }
         List<RealVector> sequenceY = getSequenceOfY(matricesDtoOptional.get(), strings[0]);
-
+        double T = (double) state.getVariable("T");
+        ChartHelper.getInstance().showNextChart(sequenceY, T);
     }
 
     @Override
@@ -42,8 +53,8 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     }
 
     private List<RealVector> getSequenceOfY(MatricesDto dto, String variant) {
-        RealVector one = new ArrayRealVector(new double[]{1});
-        RealVector minusOne = new ArrayRealVector(new double[]{-1});
+        RealVector one = new ArrayRealVector(new double[]{1.0});
+        RealVector minusOne = new ArrayRealVector(new double[]{-1.0});
         int period = getIterationCount(1);
         int iterationCount = getIterationCount(3);
         Function<Integer, RealVector> alternateMapper = (i) -> {
@@ -55,13 +66,13 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         switch (variant) {
             case "1":
                 return computeYsAndWriteXs(dto, (i) -> one, iterationCount,
-                        new FileSystemVectorXDao("Variant_1.txt"));
+                        new FileSystemVectorXDao(VARIANT_ONE_TXT));
             case "2":
                 return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
-                        new FileSystemVectorXDao("Variant_2.txt"));
+                        new FileSystemVectorXDao(VARIANT_TWO_TXT));
             case "3":
                 return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
-                        new FileSystemVectorXDao("Variant_3.txt"));
+                        new FileSystemVectorXDao(VARIANT_THREE_TXT));
         }
         ConsoleUtils.println(String.format("Unknown variant: %s", variant));
         return new ArrayList<>();
@@ -87,7 +98,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     private int getIterationCount(int coefficient) {
         double k = (double) ((int) state.getVariable("k"));
         double T = (double) state.getVariable("T");
-        int out = coefficient * ((int) (k / T) + 1);
+        int out = coefficient * (Math.max((int) (k / T), 1));
         if (out < 0) {
             throw new IllegalStateException("Iteration count is negative");
         }

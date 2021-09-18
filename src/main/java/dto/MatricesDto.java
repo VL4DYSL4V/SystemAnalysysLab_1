@@ -1,4 +1,4 @@
-package command.dto;
+package dto;
 
 import lombok.Data;
 import org.apache.commons.math3.linear.RealMatrix;
