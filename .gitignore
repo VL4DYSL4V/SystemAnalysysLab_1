@@ -4,3 +4,5 @@
 SystemAnalysysLab1.iml
 target
 .out
+out
+/src/main/resources/META-INF
