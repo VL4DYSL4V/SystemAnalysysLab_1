@@ -3,7 +3,6 @@ package state;
 import framework.state.AbstractApplicationState;
 import framework.state.StateHelper;
 import framework.utils.ConsoleUtils;
-import framework.utils.ValidationUtils;
 import framework.variable.holder.VariableHolder;
 import framework.variable.holder.VariableHolderAware;
 import lombok.Getter;

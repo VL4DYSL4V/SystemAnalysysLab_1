@@ -42,8 +42,10 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
             return;
         }
         List<RealVector> sequenceY = getSequenceOfY(matricesDtoOptional.get(), strings[0]);
-        double T = (double) state.getVariable("T");
-        ChartHelper.getInstance().showNextChart(sequenceY, T);
+        if (!sequenceY.isEmpty()) {
+            double T = (double) state.getVariable("T");
+            ChartHelper.getInstance().showNextChart(sequenceY, T);
+        }
     }
 
     @Override
@@ -56,7 +58,6 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         RealVector one = new ArrayRealVector(new double[]{1.0});
         RealVector minusOne = new ArrayRealVector(new double[]{-1.0});
         int period = getIterationCount(1);
-        int iterationCount = getIterationCount(3);
         Function<Integer, RealVector> alternateMapper = (i) -> {
             if ((i / period) % 2 == 0) {
                 return one;
@@ -65,13 +66,13 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         };
         switch (variant) {
             case "1":
-                return computeYsAndWriteXs(dto, (i) -> one, iterationCount,
+                return computeYsAndWriteXs(dto, (i) -> one, getIterationCount(2),
                         new FileSystemVectorXDao(VARIANT_ONE_TXT));
             case "2":
-                return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
+                return computeYsAndWriteXs(dto, alternateMapper, getIterationCount(2),
                         new FileSystemVectorXDao(VARIANT_TWO_TXT));
             case "3":
-                return computeYsAndWriteXs(dto, alternateMapper, iterationCount,
+                return computeYsAndWriteXs(dto, alternateMapper, getIterationCount(3),
                         new FileSystemVectorXDao(VARIANT_THREE_TXT));
         }
         ConsoleUtils.println(String.format("Unknown variant: %s", variant));

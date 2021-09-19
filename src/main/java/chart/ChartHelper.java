@@ -31,6 +31,7 @@ public class ChartHelper {
         ChartDto dto = getChartDto(sequenceY, T);
         XYChart chart = getChart(dto.getXData(), dto.getYData());
         this.previousChart = new SwingWrapper<>(chart).displayChart();
+        this.previousChart.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
     }
 
     private XYChart getChart(List<? extends Number> xData, List<? extends Number> yData) {
