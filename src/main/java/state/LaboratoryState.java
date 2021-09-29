@@ -80,19 +80,11 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
     }
 
     public void setA1(double a1) {
-        if (a1 < 1 || a1 > 10) {
-            ConsoleUtils.println(variableHolder.getVariable("a1").getConstraintViolationMessage());
-        } else {
-            this.a1 = a1;
-        }
+        this.a1 = a1;
     }
 
     public void setA2(double a2) {
-        if (a2 < 1 || a2 > 10) {
-            ConsoleUtils.println(variableHolder.getVariable("a2").getConstraintViolationMessage());
-        } else {
-            this.a2 = a2;
-        }
+        this.a2 = a2;
     }
 
     @Override

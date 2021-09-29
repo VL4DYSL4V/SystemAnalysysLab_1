@@ -19,9 +19,7 @@ import org.apache.commons.math3.util.CombinatoricsUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 public class RunCommand implements RunnableCommand, ApplicationStateAware {
 
@@ -36,12 +34,8 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     @Override
     public void execute(String[] strings) {
         ValidationUtils.requireNonNull(state);
-        Optional<MatricesDto> matricesDtoOptional = computeMatrices();
-        if (matricesDtoOptional.isEmpty()) {
-            ConsoleUtils.println("Could not compute matrices");
-            return;
-        }
-        List<RealVector> sequenceY = getSequenceOfY(matricesDtoOptional.get(), strings[0]);
+        MatricesDto matricesDto = computeMatrices();
+        List<RealVector> sequenceY = getSequenceOfY(matricesDto, strings[0]);
         if (!sequenceY.isEmpty()) {
             double T = (double) state.getVariable("T");
             ChartHelper.getInstance().showNextChart(sequenceY, T);
@@ -110,35 +104,18 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
         return F.operate(previousX).add(G.operate(u));
     }
 
-    private Optional<MatricesDto> computeMatrices() {
-        Optional<Double> optionalT = getVariableFromStateOrAskForIt("T", T -> T >= 0.001 && T <= 0.1);
-        Optional<Double> optionalA1 = getVariableFromStateOrAskForIt("a1", a1 -> a1 >= 1 && a1 <= 10);
-        Optional<Double> optionalA2 = getVariableFromStateOrAskForIt("a2", a2 -> a2 >= 1 && a2 <= 10);
-        Optional<Integer> optionalQ = getVariableFromStateOrAskForIt("q", q -> q >= 2 && q <= 10);
-        if (optionalA1.isPresent() && optionalA2.isPresent()
-                && optionalT.isPresent() && optionalQ.isPresent()) {
-            double[] coefficients = {1, optionalA1.get(), optionalA2.get()};
-            RealMatrix A = MatrixUtils.getFrobeniusMatrix(coefficients);
-            Map<Integer, RealMatrix> powerToMatrixInThatPower =
-                    MatrixUtils.getPowerToMatrixInThatPower(A, optionalQ.get());
-            double T = optionalT.get();
-            int q = optionalQ.get();
-            RealMatrix F = computeMatrixF(A, T, q, powerToMatrixInThatPower);
-            RealMatrix B = (RealMatrix) state.getVariable("B");
-            RealMatrix G = computeMatrixG(A, B, T, q, powerToMatrixInThatPower);
-            return Optional.of(new MatricesDto(F, G));
-        }
-        return Optional.empty();
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> Optional<T> getVariableFromStateOrAskForIt(String variableName, Predicate<T> variableInvariantChecker) {
-        final Object variable = state.getVariable(variableName);
-        if (variable == null || !variableInvariantChecker.test((T) variable)) {
-            ConsoleUtils.println(String.format("Specify parameter %s", variableName));
-            return Optional.empty();
-        }
-        return Optional.of((T) variable);
+    private MatricesDto computeMatrices() {
+        double a1 = (double) state.getVariable("a1");
+        double a2 = (double) state.getVariable("a2");
+        double[] coefficients = {1, a1, a2};
+        RealMatrix A = MatrixUtils.getFrobeniusMatrix(coefficients);
+        int q = (int) state.getVariable("q");
+        Map<Integer, RealMatrix> powerToMatrixInThatPower = MatrixUtils.getPowerToMatrixInThatPower(A, q);
+        double T = (double) state.getVariable("T");
+        RealMatrix F = computeMatrixF(A, T, q, powerToMatrixInThatPower);
+        RealMatrix B = (RealMatrix) state.getVariable("B");
+        RealMatrix G = computeMatrixG(A, B, T, q, powerToMatrixInThatPower);
+        return new MatricesDto(F, G);
     }
 
     private RealMatrix computeMatrixF(RealMatrix A, double T, int q,
