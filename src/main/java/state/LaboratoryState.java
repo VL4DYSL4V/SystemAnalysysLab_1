@@ -12,26 +12,25 @@ import org.apache.commons.math3.linear.RealMatrix;
 @Getter
 public class LaboratoryState extends AbstractApplicationState implements VariableHolderAware {
 
-    //T must be >= 0.001 and <= 0.1
-    private double T;
+    //T must be T >= 0
+    private double T = 0.02;
 
     //q must be >= 2 and <= 10
-    private int q;
+    private int q = 10;
 
-    private double a1;
+    private double a1 = 1;
 
-    private double a2;
+    private double a2 = 3;
 
     private final int k = 60;
 
-    private VariableHolder variableHolder;
+    private double b = 1;
 
-    private final RealMatrix B;
+    private VariableHolder variableHolder;
 
     private final RealMatrix C;
 
     public LaboratoryState() {
-        this.B = new Array2DRowRealMatrix(new double[][]{{0}, {0}, {1}});
         this.C = new Array2DRowRealMatrix(new double[][]{{1, 0, 0}});
     }
 
@@ -39,6 +38,8 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
     protected void initVariableNameToSettersMap() {
         this.variableNameToSetter.put("T", (name, value) -> StateHelper
                 .defaultSet(name, "T", value, Double.class, (val) -> (Double) val, this::setT));
+        this.variableNameToSetter.put("b", (name, value) -> StateHelper
+                .defaultSet(name, "b", value, Double.class, (val) -> (Double) val, this::setB));
         this.variableNameToSetter.put("q", (name, value) -> StateHelper
                 .defaultSet(name, "q", value, Integer.class, (val) -> (Integer) val, this::setQ));
         this.variableNameToSetter.put("a1", (name, value) -> StateHelper
@@ -49,7 +50,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
 
     @Override
     protected void initVariableNameToGettersMap() {
-        this.variableNameToGetter.put("B", this::getB);
+        this.variableNameToGetter.put("B", () -> new Array2DRowRealMatrix(new double[][]{{0}, {0}, {b}}));
         this.variableNameToGetter.put("C", this::getC);
         this.variableNameToGetter.put("T", this::getT);
         this.variableNameToGetter.put("q", this::getQ);
@@ -59,11 +60,15 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
     }
 
     public void setT(double T) {
-        if (T < 0.001 || T > 0.1) {
+        if (T <= 0) {
             ConsoleUtils.println(variableHolder.getVariable("T").getConstraintViolationMessage());
-        } else {
-            this.T = T;
+            return;
         }
+        this.T = T;
+    }
+
+    public void setB(double b) {
+        this.b = b;
     }
 
     public void setQ(int q) {

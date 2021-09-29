@@ -155,7 +155,7 @@ public class RunCommand implements RunnableCommand, ApplicationStateAware {
     private RealMatrix computeMatrixG(RealMatrix A, RealMatrix B, double T, int q,
                                       Map<Integer, RealMatrix> powerToMatrixInThatPower) {
         RealMatrix G = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
-        for (int i = 1; i <= q - 1; i++) {
+        for (int i = 0; i <= q - 1; i++) {
             RealMatrix matrixToAdd = powerToMatrixInThatPower.get(i)
                     .scalarMultiply(Math.pow(T, i)).scalarMultiply(1.0 / CombinatoricsUtils.factorial(i + 1));
             G = G.add(matrixToAdd);
