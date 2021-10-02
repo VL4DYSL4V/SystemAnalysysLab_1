@@ -54,6 +54,7 @@ public class LaboratoryState extends AbstractApplicationState implements Variabl
         this.variableNameToGetter.put("C", this::getC);
         this.variableNameToGetter.put("T", this::getT);
         this.variableNameToGetter.put("q", this::getQ);
+        this.variableNameToGetter.put("b", this::getB);
         this.variableNameToGetter.put("k", this::getK);
         this.variableNameToGetter.put("a1", this::getA1);
         this.variableNameToGetter.put("a2", this::getA2);
